@@ -54,6 +54,10 @@ when supporting users.  This allows you to help them effectively bypass their lo
 - [**Mailchimp Sync**](Mailchimp) - Sync Mailchimp subscribers both ways (from Mailchimp to TouchPoint and vice versa), 
 across multiple Mailchimp accounts and with Mailchimp Interests as TouchPoint Subgroups.
 
+- [**Manual Batch Maker**](ManualBatchMaker) - Use a predefined Text Content to generate batches. For now the use
+consists of manually adding a MyBatch.json from the example json in the folder. Then run the py script after the
+data is what you are looking for.
+
 - [**Non-Weekly Meetings**](NonweeklyMeetings) - This script, when added to your Morning Batch, automatically creates meetings for 
 non-weekly Involvements based on Extra Values on the Involvement. Once the meetings are created, automatic attendance reminders will
 be sent. 
