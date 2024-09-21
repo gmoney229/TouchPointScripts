@@ -5,7 +5,6 @@
 # Imports
 import datetime
 import json
-import re
 
 # Variables
 __author__ = "Gavin Murphy"
@@ -48,33 +47,34 @@ def process_get():
             AND Name LIKE '%.json%'
         ORDER BY DateCreated DESC
     '''
-    Data.text_contents = q.QuerySql(txt_cont_sql)
-    model.Form = model.RenderTemplate(CHOOSE_JSON_FILE_HTML)
+    # TODO add a cancel button
+    Data.text_contents  = q.QuerySql(txt_cont_sql)
+    model.Form          = model.RenderTemplate(CHOOSE_JSON_FILE_HTML)
 
 
 def process_post():
+    # TODO test no selection '-- select a Text Content --'
     find_sql = '''
     SELECT Body FROM dbo.Content WHERE Id = @text_content_id
     '''
-    selected_text_content_id = int(model.Data.textContentJson)
-    params = {"text_content_id": selected_text_content_id}
-    cont = q.QuerySqlTop1(find_sql, None, params)
+    selected_text_content_id    = int(model.Data.textContentJson)
+    params                      = {"text_content_id": selected_text_content_id}
+    cont                        = q.QuerySqlTop1(find_sql, None, params)
 
     if cont.Body is not None:
-        batches = process_batch_json(cont.Body)
+        processed_batches = process_batch_json(cont.Body)
     else:
         print("<p>NOTICE: Content body is none: {}</p>".format(selected_text_content_id))
         return
 
-    for id in batches:
+    for batch_info in processed_batches:
         # NOTE I had a rough time getting the f string working here
-        batch_link = "{}/Batches/Detail/{}".format(model.CmsHost, id)
-        anchor = "<a href=\"{}\">{}</a>".format(batch_link, batch_link)
+        anchor = "<a href=\"{}\">{} -- {}</a>".format(batch_info["link"], batch_info["short_name"], batch_info["link"])
         print(anchor)
 
 
 def process_batch_json(raw_json):
-    batch_ids = []
+    batches_processed = []
 
     try:
         parsed_bdy = json.loads(raw_json)
@@ -90,19 +90,23 @@ def process_batch_json(raw_json):
         print("<p>NOTICE: json is empty not doing anything: {}</p>".format(parsed_bdy))
         return
 
-    for batch in parsed_bdy.values():
+    for batch_short_name, batch in parsed_bdy.items():
         # NOTE TouchPoint does not like walrus operator either
         batch_id = make_the_batch(batch)
 
         if batch_id:
-            batch_ids.append(batch_id)
+            batches_processed.append({
+                "id": batch_id,
+                "link": "{}/Batches/Detail/{}".format(model.CmsHost, batch_id),
+                "short_name": batch_short_name
+            })
         else:
             print("<p>NOTICE: Batch was not created in make_the_batch(): {}</p>".format(parsed_bdy))
 
-    return batch_ids
+    return batches_processed
 
 
-def make_the_batch(bundle):
+def make_the_batch(batch_def):
     # NOTE shoudn't lookup data be callable with out writing SQL in Python???
     #     (4, 5, 6) = (Online, Online Pledge, Pledge)
     batch_type_sql = '''
@@ -117,41 +121,48 @@ def make_the_batch(bundle):
     '''
     funds = {r.FundId: r.FundName for r in q.QuerySql(funds_sql)}
 
-    batch_defaults = bundle['defaults']
+    batch_defaults      = batch_def['defaults']
+    batch_deposit_info  = batch_def['deposit']
 
-    default_date = model.ParseDate(batch_defaults['date'])
-    batch_type = bundle.get('batch_type', DEFAULT_BATCH_TYPE)
+    default_date        = model.ParseDate(batch_defaults['date'])
+    batch_type          = batch_def.get('batch_type', DEFAULT_BATCH_TYPE)
 
     if batch_type not in bundle_header_types:
         print("<p>NOTICE: bundle_header_type NOT FOUND: {}</p>".format(batch_type))
         return
 
-    batch_type_id = bundle_header_types[batch_type]
+    batch_type_id   = bundle_header_types[batch_type]
 
-    bundle_header = model.GetBundleHeader(default_date, model.DateTime.Now, batch_type_id)
-    bundle_header.BundleTotal = bundle.get('estimated_amt', 0)
-    bundle_header.BundleCount = bundle.get("estimated_count", 0)
-    fund_id = batch_defaults.get("fund_id", None)
+    bundle_header   = model.GetBundleHeader(default_date, model.DateTime.Now, batch_type_id)
+    fund_id         = batch_defaults.get("fund_id", None)
 
     if fund_id not in funds:
         print("<p>NOTICE: Batch Default FUND not found using: {}</p>".format(bundle_header.FundId))
     else:
         bundle_header.FundId = fund_id
 
-    bundle_contribs = bundle.get("contributions", [])
+    bundle_contribs = batch_def.get("contributions", [])
 
     if len(bundle_contribs) > 0:
         make_contributions_for_batch(bundle_header, bundle_contribs, batch_defaults)
 
+    # TODO figure out how to not call this function
+    #    it is not allowing me to set the estimated amt
     model.FinishBundle(bundle_header)
+
+    bundle_header.BundleTotal = batch_def.get('estimated_amt', 0)
+    bundle_header.BundleCount = batch_def.get("estimated_count", 0)
+
+    bundle_header.DepositDate = model.ParseDate(batch_deposit_info['date'])
+    # TODO set bundle Reference #
+
     return bundle_header.BundleHeaderId
 
 
 def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
-
-    fund_id = batch_defaults['fund_id']
-    default_date = model.ParseDate(batch_defaults['date'])
-    default_batch_contrib_type = batch_defaults.get("contribution_type", DEFAULT_CONTRIBUTION_TYPE)
+    fund_id                     = batch_defaults['fund_id']
+    default_date                = model.ParseDate(batch_defaults['date'])
+    default_batch_contrib_type  = batch_defaults.get("contribution_type", DEFAULT_CONTRIBUTION_TYPE)
 
     if contributions is None or len(contributions) == 0:
         print("<p>NOTICE: No preloaded contributions configured for this batch: {}</p>".format(bundle_header))
@@ -171,10 +182,10 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
     for contrib in contributions:
         # NOTE here non-contributions will be fund
         # TODO need to allow fundid at contribution level
-        people_id = contrib.get("people_id", 1)
-        check_no = contrib.get("check_no", "")
-        amount = contrib.get("amount", 0.00)  # TODO make sure my code doesn't break for int or not 2 decimals
-        type = contrib.get("type", default_batch_contrib_type)
+        people_id   = contrib.get("people_id", 1)
+        check_no    = contrib.get("check_no", "")
+        amount      = contrib.get("amount", 0.00)  # TODO make sure my code doesn't break for int or not 2 decimals
+        type        = contrib.get("type", default_batch_contrib_type)
 
         if type in contrib_types:
             contrib_type_id = contrib_types[type]
