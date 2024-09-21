@@ -13,6 +13,7 @@ __email__ = "gmurphy@stannparish.org"
 
 
 DEFAULT_CONTRIBUTION_TYPE = "Tax deductible"
+DEFAULT_BATCH_TYPE = "Loose Checks and Cash"
 
 CHOOSE_JSON_FILE_HTML = """
 <div class="box box-responsive"></div>
@@ -49,6 +50,7 @@ def process_get():
     '''
     Data.text_contents = q.QuerySql(txt_cont_sql)
     model.Form = model.RenderTemplate(CHOOSE_JSON_FILE_HTML)
+
 
 def process_post():
     find_sql = '''
@@ -108,11 +110,17 @@ def make_the_batch(bundle):
     '''
     bundle_header_types = {r.Description: r.Id for r in q.QuerySql(batch_type_sql)}
 
+    # NOTE model.ResolveFundId(fundName) might do what I need
+    #    (2) = (No longer Active/Closed)
+    funds_sql = '''
+        SELECT FundId, FundName FROM dbo.ContributionFund WHERE FundStatusId != 2
+    '''
+    funds = {r.FundId: r.FundName for r in q.QuerySql(funds_sql)}
+
     batch_defaults = bundle['defaults']
 
     default_date = model.ParseDate(batch_defaults['date'])
-    estimated_amount = bundle['estimated_amt']
-    batch_type = bundle['batch_type']
+    batch_type = bundle.get('batch_type', DEFAULT_BATCH_TYPE)
 
     if batch_type not in bundle_header_types:
         print("<p>NOTICE: bundle_header_type NOT FOUND: {}</p>".format(batch_type))
@@ -121,6 +129,14 @@ def make_the_batch(bundle):
     batch_type_id = bundle_header_types[batch_type]
 
     bundle_header = model.GetBundleHeader(default_date, model.DateTime.Now, batch_type_id)
+    bundle_header.BundleTotal = bundle.get('estimated_amt', 0)
+    bundle_header.BundleCount = bundle.get("estimated_count", 0)
+    fund_id = batch_defaults.get("fund_id", None)
+
+    if fund_id not in funds:
+        print("<p>NOTICE: Batch Default FUND not found using: {}</p>".format(bundle_header.FundId))
+    else:
+        bundle_header.FundId = fund_id
 
     bundle_contribs = bundle.get("contributions", [])
 
@@ -153,15 +169,21 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
         print("<p>ERROR: Batch Default Contribution type not found {}</p>".format(default_batch_contrib_type))
 
     for contrib in contributions:
+        # NOTE here non-contributions will be fund
+        # TODO need to allow fundid at contribution level
         people_id = contrib.get("people_id", 1)
         check_no = contrib.get("check_no", "")
-        amount = contrib.get("amount", 0.00)
+        amount = contrib.get("amount", 0.00)  # TODO make sure my code doesn't break for int or not 2 decimals
         type = contrib.get("type", default_batch_contrib_type)
 
         if type in contrib_types:
             contrib_type_id = contrib_types[type]
         else:
             print("<p>ERROR: contribution type INVALID CONTRIBUTION TYPE str: {}</p>".format(type))
+            return
+
+        if amount == 0:
+            print("<p>ERROR: amount cannot be zero: {}</p>".format(amount))
             return
 
         bundle_detail = model.AddContributionDetail(default_date, fund_id, amount, check_no, None, contrib_type_id)

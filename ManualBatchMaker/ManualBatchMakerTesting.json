@@ -2,7 +2,7 @@
     "first_test_batch": {
         "batch_type": "Loose Checks and Cash",
         "estimated_amt": 0.00,
-        "estimated_count": 109,
+        "estimated_count": 1,
         "defaults": {
             "date": "2024-09-15",
             "fund_id": 3,
