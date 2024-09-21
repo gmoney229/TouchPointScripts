@@ -10,6 +10,13 @@ I need to make the same set of batches each week for manual data entry.
 - choose a batch that you want to clone
 - default by hand (Stretch goal)
 
+Json versioning for now
+
+```json
+{"version": "{YYYY}.{MM}.{MINOR}"}
+```
+
+I can see the use for something like [major].[minor].[revision] but [YYYY].[MM].[minor] seems easier.
 
 ### Python script
 

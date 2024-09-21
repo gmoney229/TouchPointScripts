@@ -62,22 +62,21 @@ def process_post():
     cont                        = q.QuerySqlTop1(find_sql, None, params)
 
     if cont.Body is not None:
-        processed_batches = process_batch_json(cont.Body)
+        processed_batches = process_batches_json(cont.Body)
     else:
         print("<p>NOTICE: Content body is none: {}</p>".format(selected_text_content_id))
         return
 
     for batch_info in processed_batches:
-        # NOTE I had a rough time getting the f string working here
         anchor = "<a href=\"{}\">{} -- {}</a>".format(batch_info["link"], batch_info["short_name"], batch_info["link"])
         print(anchor)
 
 
-def process_batch_json(raw_json):
+def process_batches_json(raw_json):
     batches_processed = []
 
     try:
-        parsed_bdy = json.loads(raw_json)
+        parsed_bdy = json.loads(raw_json)["batches"]
         # TODO would be nice to make sure the json is good at this point
         #    plus I think you can run the data through a json schema checker and catch Exception
 
@@ -91,7 +90,6 @@ def process_batch_json(raw_json):
         return
 
     for batch_short_name, batch in parsed_bdy.items():
-        # NOTE TouchPoint does not like walrus operator either
         batch_id = make_the_batch(batch)
 
         if batch_id:

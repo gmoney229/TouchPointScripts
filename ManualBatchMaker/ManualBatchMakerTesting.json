@@ -1,16 +1,19 @@
 {
-    "first_test_batch": {
-        "batch_type": "Loose Checks and Cash",
-        "estimated_amt": 0.00,
-        "estimated_count": 1,
-        "defaults": {
-            "date": "2024-09-15",
-            "fund_id": 3,
-            "contribution_type": "Tax deductible"
-        },
-        "deposit": {
-            "date": "2024-09-15",
-            "reference_number": "3rdParty2024MMDD"
+    "version": "2024.9.1",
+    "batches": {
+        "first_test_batch": {
+            "batch_type": "Loose Checks and Cash",
+            "estimated_amt": 0.00,
+            "estimated_count": 1,
+            "defaults": {
+                "date": "2024-09-15",
+                "fund_id": 3,
+                "contribution_type": "Tax deductible"
+            },
+            "deposit": {
+                "date": "2024-09-15",
+                "reference_number": "3rdParty2024MMDD"
+            }
         }
     }
 }
