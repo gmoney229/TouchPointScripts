@@ -39,6 +39,10 @@ CHOOSE_JSON_FILE_HTML = """
 """
 
 
+def print_pgph(msg):
+    print("<p>{}</p>".format(msg))
+
+
 def process_get():
     txt_cont_sql = '''
         SELECT Id, Name
@@ -64,12 +68,12 @@ def process_post():
     if cont.Body is not None:
         processed_batches = process_batches_json(cont.Body)
     else:
-        print("<p>NOTICE: Content body is none: {}</p>".format(selected_text_content_id))
+        print_pgph("NOTICE: Content body is none: {}".format(selected_text_content_id))
         return
 
     for batch_info in processed_batches:
         anchor = "<a href=\"{}\">{} -- {}</a>".format(batch_info["link"], batch_info["short_name"], batch_info["link"])
-        print(anchor)
+        print_pgph(anchor)
 
 
 def process_batches_json(raw_json):
@@ -81,12 +85,12 @@ def process_batches_json(raw_json):
         #    plus I think you can run the data through a json schema checker and catch Exception
 
     except Exception as e:
-        print("<p>ERROR: Failed to load json {}</p>".format(e))
+        print_pgph("ERROR: Failed to load json {}".format(e))
         raise e
 
     # NOTE I think this could go away once jsonschema is in place
     if parsed_bdy is None or len(parsed_bdy) == 0:
-        print("<p>NOTICE: json is empty not doing anything: {}</p>".format(parsed_bdy))
+        print_pgph("NOTICE: json is empty not doing anything: {}".format(parsed_bdy))
         return
 
     for batch_short_name, batch in parsed_bdy.items():
@@ -99,7 +103,7 @@ def process_batches_json(raw_json):
                 "short_name": batch_short_name
             })
         else:
-            print("<p>NOTICE: Batch was not created in make_the_batch(): {}</p>".format(parsed_bdy))
+            print_pgph("NOTICE: Batch was not created in make_the_batch(): {}".format(parsed_bdy))
 
     return batches_processed
 
@@ -126,7 +130,7 @@ def make_the_batch(batch_def):
     batch_type          = batch_def.get('batch_type', DEFAULT_BATCH_TYPE)
 
     if batch_type not in bundle_header_types:
-        print("<p>NOTICE: bundle_header_type NOT FOUND: {}</p>".format(batch_type))
+        print_pgph("NOTICE: bundle_header_type NOT FOUND: {}".format(batch_type))
         return
 
     batch_type_id   = bundle_header_types[batch_type]
@@ -135,7 +139,7 @@ def make_the_batch(batch_def):
     fund_id         = batch_defaults.get("fund_id", None)
 
     if fund_id not in funds:
-        print("<p>NOTICE: Batch Default FUND not found using: {}</p>".format(bundle_header.FundId))
+        print_pgph("NOTICE: Batch Default FUND not found using: {}".format(bundle_header.FundId))
     else:
         bundle_header.FundId = fund_id
 
@@ -163,7 +167,7 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
     default_batch_contrib_type  = batch_defaults.get("contribution_type", DEFAULT_CONTRIBUTION_TYPE)
 
     if contributions is None or len(contributions) == 0:
-        print("<p>NOTICE: No preloaded contributions configured for this batch: {}</p>".format(bundle_header))
+        print_pgph("NOTICE: No preloaded contributions configured for this batch: {}".format(bundle_header))
         return None
 
     # TODO just make this whole thing a class so I don't have to do this every-single time...
@@ -175,7 +179,7 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
     if default_batch_contrib_type in contrib_types:
         contrib_type_id = contrib_types[batch_defaults['contribution_type']]
     else:
-        print("<p>ERROR: Batch Default Contribution type not found {}</p>".format(default_batch_contrib_type))
+        print_pgph("ERROR: Batch Default Contribution type not found {}".format(default_batch_contrib_type))
 
     for contrib in contributions:
         # NOTE here non-contributions will be fund
@@ -190,11 +194,11 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
         if type in contrib_types:
             contrib_type_id = contrib_types[type]
         else:
-            print("<p>ERROR: contribution type INVALID CONTRIBUTION TYPE str: {}</p>".format(type))
+            print_pgph("ERROR: contribution type INVALID CONTRIBUTION TYPE str: {}".format(type))
             return
 
         if amount == 0:
-            print("<p>ERROR: amount cannot be zero: {}</p>".format(amount))
+            print_pgph("ERROR: amount cannot be zero: {}".format(amount))
             return
 
         # TODO maybe call a function here? make_str_amount()
@@ -213,8 +217,8 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
                 bundle_detail.Contribution.PeopleId = p.PeopleId
             except Exception as e:
                 description = "person with TouchPoint Id {} not found".format(people_id) if description == "" else description
-                print("<p>ERROR: trying to assign contribution to person with ID: {}</p>".format(people_id))
-                print("<p>EXCEPTION: did not contribute person with ID {}</p>".format(e))
+                print_pgph("ERROR: trying to assign contribution to person with ID: {}".format(people_id))
+                print_pgph("EXCEPTION: did not contribute person with ID {}".format(e))
 
         # TODO test and make sure description is not too long...
         bundle_detail.Contribution.ContributionDesc = description
