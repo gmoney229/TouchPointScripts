@@ -159,7 +159,7 @@ def make_the_batch(batch_def):
 
 def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
     fund_id                     = batch_defaults['fund_id']
-    default_date                = model.ParseDate(batch_defaults['date'])
+    default_date                = batch_defaults['date']
     default_batch_contrib_type  = batch_defaults.get("contribution_type", DEFAULT_CONTRIBUTION_TYPE)
 
     if contributions is None or len(contributions) == 0:
@@ -179,11 +179,13 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
 
     for contrib in contributions:
         # NOTE here non-contributions will be fund
-        # TODO need to allow fundid at contribution level
-        people_id   = contrib.get("people_id", 1)
+        # TODO need to allow fundid at contribution level and contribution date
+        people_id   = contrib.get("people_id", None)
         check_no    = contrib.get("check_no", "")
         amount      = contrib.get("amount", 0.00)  # TODO make sure my code doesn't break for int or not 2 decimals
         type        = contrib.get("type", default_batch_contrib_type)
+        date        = model.ParseDate(contrib.get("date", default_date))
+        description = contrib.get("notes", "")
 
         if type in contrib_types:
             contrib_type_id = contrib_types[type]
@@ -195,16 +197,27 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
             print("<p>ERROR: amount cannot be zero: {}</p>".format(amount))
             return
 
-        bundle_detail = model.AddContributionDetail(default_date, fund_id, amount, check_no, None, contrib_type_id)
-        bundle_detail.Contribution.MetaInfo = "Imported at time (utc){}".format(datetime.datetime.now(datetime.timezone.utc))
+        # TODO maybe call a function here? make_str_amount()
+        #    or change the type in the json?
+        amount = str(amount)
+        # NOTE just try PeopleId as string
+        # people_id = str(people_id)
 
-        try:
-            p = model.GetPerson(people_id)
-            bundle_detail.Contribution.PeopleId = p.pid
-        except Exception as e:
-            bundle_detail.Contribution.ContributionDesc = "person with TouchPoint Id {} not found".format(people_id)
-            print("<p>ERROR: cannot find person with ID: {}</p>".format(people_id))
-            print("<p>EXCEPTION: unable to find person with ID {}</p>".format(e))
+        bundle_detail = model.AddContributionDetail(date, fund_id, amount, check_no, None, None, contrib_type_id)
+        # Use time in UTC? datetime.datetime.now(datetime.timezone.utc)
+        bundle_detail.Contribution.MetaInfo = "Imported at time {}".format(datetime.datetime.now().strftime("%x %X"))
+
+        if people_id is not None:
+            try:
+                p = model.GetPerson(people_id)
+                bundle_detail.Contribution.PeopleId = p.PeopleId
+            except Exception as e:
+                description = "person with TouchPoint Id {} not found".format(people_id) if description == "" else description
+                print("<p>ERROR: trying to assign contribution to person with ID: {}</p>".format(people_id))
+                print("<p>EXCEPTION: did not contribute person with ID {}</p>".format(e))
+
+        # TODO test and make sure description is not too long...
+        bundle_detail.Contribution.ContributionDesc = description
 
         bundle_header.BundleDetails.Add(bundle_detail)
 
