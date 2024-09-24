@@ -156,7 +156,8 @@ def make_the_batch(batch_def):
     bundle_header.BundleCount = batch_def.get("estimated_count", 0)
 
     bundle_header.DepositDate = model.ParseDate(batch_deposit_info['date'])
-    # TODO set bundle Reference #
+    bundle_header.ReferenceId = batch_deposit_info.get("reference_#", None)
+    # NOTE not sure if ReferenceIdType needs to be set as well?
 
     return bundle_header.BundleHeaderId
 
