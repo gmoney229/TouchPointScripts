@@ -6,6 +6,9 @@
 import datetime
 import json
 
+from collections import OrderedDict
+
+
 # Variables
 __author__ = "Gavin Murphy"
 __email__ = "gmurphy@stannparish.org"
@@ -80,7 +83,8 @@ def process_batches_json(raw_json):
     batches_processed = []
 
     try:
-        parsed_bdy = json.loads(raw_json)["batches"]
+        parsed_bdy = json.loads(raw_json, object_pairs_hook=OrderedDict)
+        batches_def = parsed_bdy["batches"]
         # TODO would be nice to make sure the json is good at this point
         #    plus I think you can run the data through a json schema checker and catch Exception
 
@@ -89,11 +93,11 @@ def process_batches_json(raw_json):
         raise e
 
     # NOTE I think this could go away once jsonschema is in place
-    if parsed_bdy is None or len(parsed_bdy) == 0:
-        print_pgph("NOTICE: json is empty not doing anything: {}".format(parsed_bdy))
+    if batches_def is None or len(batches_def) == 0:
+        print_pgph("NOTICE: json is empty not doing anything: {}".format(batches_def))
         return
 
-    for batch_short_name, batch in parsed_bdy.items():
+    for batch_short_name, batch in batches_def.items():
         batch_id = make_the_batch(batch)
 
         if batch_id:
@@ -103,7 +107,7 @@ def process_batches_json(raw_json):
                 "short_name": batch_short_name
             })
         else:
-            print_pgph("NOTICE: Batch was not created in make_the_batch(): {}".format(parsed_bdy))
+            print_pgph("NOTICE: Batch was not created in make_the_batch(): {}".format(batch))
 
     return batches_processed
 
