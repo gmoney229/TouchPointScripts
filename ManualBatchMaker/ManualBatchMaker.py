@@ -190,11 +190,12 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
         # NOTE here non-contributions will be fund
         # TODO need to allow fundid at contribution level and contribution date
         people_id   = contrib.get("people_id", None)
-        check_no    = contrib.get("check_no", "")
+        check_no    = contrib.get("check_#", "")
         amount      = contrib.get("amount", 0.00)  # TODO make sure my code doesn't break for int or not 2 decimals
-        type        = contrib.get("type", default_batch_contrib_type)
+        type        = contrib.get("type", default_batch_contrib_type)  # TODO breaking out fund_description breaks here
         date        = model.ParseDate(contrib.get("date", default_date))
         description = contrib.get("notes", "")
+        fund        = contrib.get("fund", fund_id)  # TODO break this out into a fund_description dict?
 
         if type in contrib_types:
             contrib_type_id = contrib_types[type]
@@ -212,7 +213,7 @@ def make_contributions_for_batch(bundle_header, contributions, batch_defaults):
         # NOTE just try PeopleId as string
         # people_id = str(people_id)
 
-        bundle_detail = model.AddContributionDetail(date, fund_id, amount, check_no, None, None, contrib_type_id)
+        bundle_detail = model.AddContributionDetail(date, fund, amount, check_no, None, None, contrib_type_id)
         # Use time in UTC? datetime.datetime.now(datetime.timezone.utc)
         bundle_detail.Contribution.MetaInfo = "Imported at time {}".format(datetime.datetime.now().strftime("%x %X"))
 
