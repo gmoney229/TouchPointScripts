@@ -1,0 +1,203 @@
+#!python3
+
+#roles=Finance
+
+# Imports
+import codecs
+import io
+import json
+
+from xml.etree import cElementTree as ElementTree
+
+
+# Variables
+__author__ = "Gavin Murphy"
+__email__ = "gmurphy@stannparish.org"
+
+
+# Classes
+# https://stackoverflow.com/questions/2148119/how-to-convert-an-xml-string-to-a-dictionary
+
+class XmlListConfig(list):
+    def __init__(self, aList):
+        for element in aList:
+            if element:
+                # treat like dict
+                if len(element) == 1 or element[0].tag != element[1].tag:
+                    self.append(XmlDictConfig(element))
+                # treat like list
+                elif element[0].tag == element[1].tag:
+                    self.append(XmlListConfig(element))
+            elif element.text:
+                text = element.text.strip()
+                if text:
+                    self.append(text)
+
+
+class XmlDictConfig(dict):
+    def __init__(self, parent_element):
+        if parent_element.items():
+            self.update(dict(parent_element.items()))
+        for element in parent_element:
+            if element:
+                # treat like dict - we assume that if the first two tags
+                # in a series are different, then they are all different.
+                if len(element) == 1 or element[0].tag != element[1].tag:
+                    aDict = XmlDictConfig(element)
+                # treat like list - we assume that if the first two tags
+                # in a series are the same, then the rest are the same.
+                else:
+                    # here, we put the list in dictionary; the key is the
+                    # tag name the list elements all share in common, and
+                    # the value is the list itself 
+                    aDict = {element[0].tag: XmlListConfig(element)}
+                # if the tag has attributes, add those to the dict
+                if element.items():
+                    aDict.update(dict(element.items()))
+                self.update({element.tag: aDict})
+            # this assumes that if you've got an attribute in a tag,
+            # you won't be having any text. This may or may not be a 
+            # good idea -- time will tell. It works for the way we are
+            # currently doing XML configuration files...
+            elif element.items():
+                self.update({element.tag: dict(element.items())})
+            # finally, if there are no child tags and no attributes, extract
+            # the text
+            else:
+                self.update({element.tag: element.text})
+
+
+# Functions
+def print_pgph(msg):
+    print("<p>{}</p>".format(msg))
+
+
+def process_get():
+    
+    account_codes = get_account_codes()
+
+    # New Registration Forms
+    get_new_org_settings(account_codes)
+
+    # Old Join Involvement + OnlineReg (TODO test for twebb)?
+    get_old_org_settings(account_codes)
+
+    print('<pre>')
+    print(json.dumps(account_codes, indent=4))
+    print('</pre>')
+
+
+def get_account_codes():
+    account_codes_def = {}
+
+    account_codes_sql = '''
+        SELECT
+            Id,
+            Code,
+            Description,
+            Active,
+            AccountManagementRoleId
+        FROM lookup.AccountCode
+    '''
+    
+    for r in q.QuerySql(account_codes_sql):
+        account_codes_def[r.Id] = {
+            "Id": r.Id,
+            "Code": r.Code,
+            "Description": r.Description,
+            "Active": r.Active,
+            "AccountManagementRoleId": r.AccountManagementRoleId,
+            "Involvements": {}
+        }
+    return account_codes_def
+
+
+def get_new_org_settings(accnt_codes):
+    organization_reg_codes_sql = '''
+        SELECT
+            OrganizationId,
+            OrganizationName,
+            RegAccountCodeId
+        FROM dbo.Organizations
+        WHERE RegAccountCodeId IS NOT NULL
+    '''
+    for r in q.QuerySql(organization_reg_codes_sql):
+        check_add_account_code(r, r.RegAccountCodeId, accnt_codes)
+
+
+def get_old_org_settings(accnt_codes):
+    organization_settings_sql = '''
+        SELECT
+        TOP 500
+            OrganizationId,
+            OrganizationName,
+            RegSettingXml
+        FROM dbo.Organizations
+        WHERE RegSettingXml IS NOT NULL
+    '''
+    for r in q.QuerySql(organization_settings_sql):
+        reg_acct_code = get_acct_code_from_xml(r)
+
+        check_add_account_code(r, reg_acct_code, accnt_codes)
+
+
+def get_acct_code_from_xml(row):
+    ret_acct_code = None
+
+    # The row.RegSettingXml holds some crazy characters/images so trying to make the value normalized with codec
+    content = row.RegSettingXml.encode('utf-8')
+
+    ret_acct_code = get_acct_code_from_xml_str(content)
+
+    return ret_acct_code
+
+def get_acct_code_from_xml_str(xml_str):
+    row_xml_str = xml_str
+
+    root = ElementTree.XML(row_xml_str)
+    xml_dict = XmlDictConfig(root)
+
+    fees_def = xml_dict.get("Fees", {})
+    if not fees_def:
+        print_pgph("INFO: no fees definition found in RegSettingXml")
+        return
+
+    ret_acct_code = fees_def.get("AccountingCode", None)
+    if ret_acct_code:
+        try:
+            ret_acct_code = int(ret_acct_code)
+        except Exception as e:
+            print_pgph("ERROR: tried to make AccountingCode({}) an int and failed with e = {}".format(ret_acct_code, e))
+            #  TODO parse_acct_code_description 4291.01-MYC
+            return
+
+    return ret_acct_code
+
+
+def check_add_account_code(row, accting_code, acct_codes):
+
+    if accting_code is None:
+        print_pgph("INFO: Not adding information for account code: {}".format(accting_code))
+        return
+
+    if accting_code not in acct_codes:
+        print_pgph("WARNING: New account code for account_codes dictionary not adding new ones at this point: {}".format(accting_code))
+        return
+
+    print_pgph("INFO: New Involvement({}) to account code def {}".format(row.OrganizationId, accting_code))
+
+    acct_codes[accting_code]["Involvements"][row.OrganizationId] = {
+        "OrganizationId": row.OrganizationId,
+        "OrganizationName": row.OrganizationName
+    }
+
+
+def process_post():
+    raise NotImplemented
+
+
+if model.HttpMethod.lower() == 'get':
+    process_get()
+
+elif model.HttpMethod.lower() == 'post':
+    process_post()
