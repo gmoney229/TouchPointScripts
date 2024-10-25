@@ -166,23 +166,36 @@ def get_acct_code_from_xml_str(xml_str):
     if ret_acct_code:
         try:
             ret_acct_code = int(ret_acct_code)
+            return ret_acct_code
         except Exception as e:
             print_pgph("ERROR: tried to make AccountingCode({}) an int and failed with e = {}".format(ret_acct_code, e))
-            #  TODO parse_acct_code_description 4291.01-MYC
-            return
 
-    return ret_acct_code
+        # covers for description that is not an ID ex. 4291.01-MYC
+        try:
+            ret_acct_code = str(ret_acct_code)
+            return ret_acct_code
+        except Exception as e:
+            print_pgph("ERROR: tried to make AccountingCode({}) a string failed with e = {}".format(ret_acct_code, e))
+
+    return
 
 
 def check_add_account_code(row, accting_code, acct_codes):
 
     if accting_code is None:
-        print_pgph("INFO: Not adding information for account code: {}".format(accting_code))
+        # print_pgph("DEBUG: Not adding information for account code: {}".format(accting_code))
+        return
+
+    if accting_code not in acct_codes and type(accting_code) == int:
+        print_pgph("WARNING: New account code for account_codes dictionary not adding new int AccountCodeId's at this point: {}".format(accting_code))
         return
 
     if accting_code not in acct_codes:
-        print_pgph("WARNING: New account code for account_codes dictionary not adding new ones at this point: {}".format(accting_code))
-        return
+        print_pgph("INFO: Adding this account code to the list = {}".format(accting_code))
+        acct_codes[accting_code] = {
+            "Code": accting_code,
+            "Involvements": {}
+        }
 
     print_pgph("INFO: New Involvement({}) to account code def {}".format(row.OrganizationId, accting_code))
 
