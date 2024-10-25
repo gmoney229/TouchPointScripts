@@ -3,8 +3,7 @@
 #roles=Finance
 
 # Imports
-import codecs
-import io
+import re
 import json
 
 from xml.etree import cElementTree as ElementTree
@@ -16,9 +15,8 @@ __email__ = "gmurphy@stannparish.org"
 
 
 # Classes
-# https://stackoverflow.com/questions/2148119/how-to-convert-an-xml-string-to-a-dictionary
-
 class XmlListConfig(list):
+    # https://stackoverflow.com/questions/2148119/how-to-convert-an-xml-string-to-a-dictionary
     def __init__(self, aList):
         for element in aList:
             if element:
@@ -35,6 +33,7 @@ class XmlListConfig(list):
 
 
 class XmlDictConfig(dict):
+    # https://stackoverflow.com/questions/2148119/how-to-convert-an-xml-string-to-a-dictionary
     def __init__(self, parent_element):
         if parent_element.items():
             self.update(dict(parent_element.items()))
@@ -68,6 +67,28 @@ class XmlDictConfig(dict):
 
 
 # Functions
+def f_remove_accents(old):
+    """
+    https://stackoverflow.com/a/69099798
+    https://stackoverflow.com/questions/517923/what-is-the-best-way-to-remove-accents-normalize-in-a-python-unicode-string
+    Removes common accent characters
+    Uses: regex.
+    """
+    new = re.sub(r'[àáâãäå]', 'a', old)
+    new = re.sub(r'[ÀÁÂÃ]', 'A', new)
+    new = re.sub(r'[èéêë]', 'e', new)
+    # new = re.sub(r'[èéêë]', 'E', new)
+    new = re.sub(r'[ìíîï]', 'i', new)
+    # new = re.sub(r'[ìíîï]', 'I', new)
+    new = re.sub(r'[òóôõö]', 'o', new)
+    # new = re.sub(r'[òóôõö]', 'O', new)
+    new = re.sub(r'[ùúûü]', 'u', new)
+    # new = re.sub(r'[ùúûü]', 'U', new)
+    new = re.sub(r'[ñńņň]', 'n', new)
+    new = re.sub(r'[ÑŃŅŇ]', 'N', new)
+    return new
+
+
 def print_pgph(msg):
     print("<p>{}</p>".format(msg))
 
@@ -128,7 +149,6 @@ def get_new_org_settings(accnt_codes):
 def get_old_org_settings(accnt_codes):
     organization_settings_sql = '''
         SELECT
-        TOP 500
             OrganizationId,
             OrganizationName,
             RegSettingXml
@@ -137,7 +157,6 @@ def get_old_org_settings(accnt_codes):
     '''
     for r in q.QuerySql(organization_settings_sql):
         reg_acct_code = get_acct_code_from_xml(r)
-
         check_add_account_code(r, reg_acct_code, accnt_codes)
 
 
@@ -145,11 +164,20 @@ def get_acct_code_from_xml(row):
     ret_acct_code = None
 
     # The row.RegSettingXml holds some crazy characters/images so trying to make the value normalized with codec
-    content = row.RegSettingXml.encode('utf-8')
+    try:
+        content = row.RegSettingXml.encode('utf-8').strip()
+    except Exception as e:
+        print_pgph("EXCEPTION: this is a problem need to parse with codec and ignore errors:")
+        print('<pre>')
+        print("type of variable = {}".format(type(row.RegSettingXm)))
+        print(row.RegSettingXml)
+        print('</pre>')
+        return None
 
     ret_acct_code = get_acct_code_from_xml_str(content)
 
     return ret_acct_code
+
 
 def get_acct_code_from_xml_str(xml_str):
     row_xml_str = xml_str
@@ -201,7 +229,8 @@ def check_add_account_code(row, accting_code, acct_codes):
 
     acct_codes[accting_code]["Involvements"][row.OrganizationId] = {
         "OrganizationId": row.OrganizationId,
-        "OrganizationName": row.OrganizationName
+        # NOTE: this covers json.dumps from blowing up when accented n with tilde is being printed
+        "OrganizationName": f_remove_accents(row.OrganizationName)
     }
 
 
