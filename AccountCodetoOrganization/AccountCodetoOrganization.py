@@ -188,6 +188,7 @@ def get_acct_code_from_xml_str(xml_str):
     fees_def = xml_dict.get("Fees", {})
     if not fees_def:
         print_pgph("INFO: no fees definition found in RegSettingXml")
+        print_pgph("settings = {}".format(xml_str))
         return
 
     ret_acct_code = fees_def.get("AccountingCode", None)
@@ -226,6 +227,8 @@ def check_add_account_code(row, accting_code, acct_codes):
         }
 
     print_pgph("INFO: New Involvement({}) to account code def {}".format(row.OrganizationId, accting_code))
+    # NOTE type int is not subscriptable python dictionary
+    # print_pgph("INFO: New Involvement({}) to account code def {} | {}".format(row.OrganizationId, accting_code, acct_codes[accting_code["Code"]]))
 
     acct_codes[accting_code]["Involvements"][row.OrganizationId] = {
         "OrganizationId": row.OrganizationId,
