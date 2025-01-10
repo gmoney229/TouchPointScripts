@@ -157,6 +157,18 @@ def print_pgph(msg):
 
 def process_get():
 
+    value_tbl = ""
+
+    for reprt in MY_CONFIGURATION.values():
+        if value_tbl == "":
+            value_tbl = value_tbl + '''
+                ({},'{}')
+            '''.format(reprt['content']['id'], reprt['content']['name'])
+        else:
+            value_tbl = value_tbl + ''',
+                ({},'{}')
+            '''.format(reprt['content']['id'], reprt['content']['name'])
+
     # well I am sure there is a better way to do this... but kindah curious
     # https://www.sqlshack.com/the-table-variable-in-sql-server/
     # now I need the variables in here...
@@ -165,11 +177,9 @@ def process_get():
         
         INSERT INTO @MyConfigurationReports
         VALUES 
-        (1091,'ReturnedRefundTransAcct'),
-        (1119,'MobileGivingReport'),
-        (1145,'_TestingBox')
+        {}
         SELECT * FROM @MyConfigurationReports
-    '''
+    '''.format(value_tbl)
     Data.runnable_reports = q.QuerySql(temp_sql_for_dapper_rows)
 
     model.Form = model.RenderTemplate(A_SUITE_HTML)
