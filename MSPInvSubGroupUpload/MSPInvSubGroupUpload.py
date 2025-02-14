@@ -4,7 +4,12 @@
 
 # Imports
 import csv
+import datetime
 import io
+import re
+import json
+
+from xml.etree import cElementTree as ElementTree
 
 
 # Variables
@@ -12,7 +17,8 @@ __author__ = "Gavin Murphy"
 __email__ = "gmurphy@stannparish.org"
 
 
-NUM_LINES_TO_STRIP = 6
+NUM_LINES_TO_STRIP  = 6
+MSP_TP_ID_FIELDNAME = 'TouchPoint ID'
 
 
 # Classes
@@ -40,7 +46,30 @@ def process_post():
     reader = csv.DictReader(csv_file)
 
     for row in reader:
-        print_pgph(row)
+        process_minister(row)
+
+
+def process_minister(ministr):
+    try:
+        tp_id_field = ministr[MSP_TP_ID_FIELDNAME]
+        if tp_id_field is None or tp_id_field == '':
+            print_pgph("No touchpoint id defined in file for {}".format(ministr))
+            return
+
+        touchpoint_id = int(tp_id_field)
+
+    except Exception as err:
+        print_pgph('ERROR Cannot find the TouchPoint Id field {} in record {}'.format(MSP_TP_ID_FIELDNAME, ministr))
+        raise err
+
+    if not active_minister(ministr):
+        print_pgph('INFO: NOT_ACTIVE This is not an active minister leaving them alone {}'.format(ministr))
+        return
+
+
+def active_minister(ministr):
+    print_pgph("is this person still active?")
+
 
 
 if model.HttpMethod.lower() == 'get':
