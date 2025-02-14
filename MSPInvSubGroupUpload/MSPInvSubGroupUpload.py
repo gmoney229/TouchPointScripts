@@ -83,7 +83,7 @@ def active_minister(ministr):
     # convert for compareto TouchPoint model DateTime
     days_ago_tpdt = model.ParseDate(days_ago.strftime('%Y-%m-%d'))
 
-    return (last_time_used > days_ago_tpdt)
+    return not ((last_time_used < days_ago_tpdt) or (ministr['Inactive'].upper() == 'YES'))
 
 
 def check_drop_from_org(people_id, org_id):
