@@ -17,14 +17,15 @@ __author__ = "Gavin Murphy"
 __email__ = "gmurphy@stannparish.org"
 
 
-NUM_LINES_TO_STRIP          = 6
-LOOKBACK_DAYS               = 365
-MSP_TP_ID_FIELDNAME         = 'TouchPoint ID'
-MSP_ACTIVE_TIMING_FIELDNAME = 'Last date used in a schedule'
-TP_MSP_INVOLVEMENT_ID       = '1308'
+NUM_LINES_TO_STRIP              = 6
+LOOKBACK_DAYS                   = 365
+MSP_TP_ID_FIELDNAME             = 'TouchPoint ID'
+MSP_ACTIVE_TIMING_FIELDNAME     = 'Last date used in a schedule'
+MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'}
+TP_MSP_INVOLVEMENT_ID           = 1308
+
 
 # Classes
-
 
 
 # Functions
@@ -65,10 +66,15 @@ def process_minister(ministr):
         raise err
 
     if not active_minister(ministr):
-        print_pgph('INFO: NOT_ACTIVE This is not an active minister leaving them alone {}'.format(ministr))
+        print_pgph('INFO: NOT_ACTIVE This is not an active minister {}'.format(ministr))
+        # check_drop_from_org(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
+        print_pgph('WARNING: will drop if not active eventually for person {} in org {}'.format(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID))
         return
 
-    print_pgph('INFO: the minister is still ministering {}'.format(ministr))
+    # model.JoinOrg(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
+    print_pgph('WARNING: will add to involvement eventually for person {} to org {}'.format(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID))
+
+    load_subgroups(ministr, TP_MSP_INVOLVEMENT_ID)
 
 
 def active_minister(ministr):
@@ -78,6 +84,25 @@ def active_minister(ministr):
     days_ago_tpdt = model.ParseDate(days_ago.strftime('%Y-%m-%d'))
 
     return (last_time_used > days_ago_tpdt)
+
+
+def check_drop_from_org(people_id, org_id):
+    if not model.InOrg(people_id, org_id):
+        return
+
+    print_pgph('WARNING: removing PeopleId {} from organization {}'.format(people_id, org_id))
+    model.DropOrgMember(people_id, org_id)
+
+
+def load_subgroups(ministr, org_id):
+
+    pattern = r"\s+\[(.*?)\]"
+
+    groups_no_subcat = re.sub(pattern, "", ministr['Ministry qualifications'])
+
+    for group in groups_no_subcat.split(","):
+        print_pgph("WARNING: adding PeopleId {} organization {}'s subgroup {}".format(ministr['touchpoint_id'], org_id, group))
+        # model.AddSubGroup(ministr['touchpoint_id'], org_id, group)
 
 
 if model.HttpMethod.lower() == 'get':
