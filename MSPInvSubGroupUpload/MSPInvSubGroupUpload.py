@@ -66,13 +66,12 @@ def process_minister(ministr):
         raise err
 
     if not active_minister(ministr):
-        print_pgph('INFO: NOT_ACTIVE This is not an active minister {}'.format(ministr))
-        # check_drop_from_org(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
-        print_pgph('WARNING: will drop if not active eventually for person {} in org {}'.format(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID))
+        print_pgph('INFO: NOT_ACTIVE This is not an active minister {}'.format(ministr['touchpoint_id']))
+        check_drop_from_org(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
         return
 
-    # model.JoinOrg(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
-    print_pgph('WARNING: will add to involvement eventually for person {} to org {}'.format(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID))
+    model.JoinOrg(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
+    print_pgph('INFO: added to involvement for person {} to org {}'.format(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID))
 
     load_subgroups(ministr, TP_MSP_INVOLVEMENT_ID)
 
@@ -102,10 +101,10 @@ def load_subgroups(ministr, org_id):
     for sub_group in sub_groups_from_file:
         print_pgph("WARNING: adding PeopleId {} organization {}'s subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
 
-        # if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
-        #     continue
+        if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
+            continue
 
-        # model.AddSubGroup(ministr['touchpoint_id'], org_id, sub_group)
+        model.AddSubGroup(ministr['touchpoint_id'], org_id, sub_group)
 
     # REMOVE old
     exists_sg_query = '''
@@ -123,8 +122,8 @@ def load_subgroups(ministr, org_id):
     for sub_group in remove_sub_groups:
         print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
 
-        # if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
-        #     model.RemoveSubGroup(ministr['touchpoint_id'], org_id, sub_group)
+        if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
+            model.RemoveSubGroup(ministr['touchpoint_id'], org_id, sub_group)
 
 
 def get_ministers_subgroups(ministr_qual):
