@@ -100,9 +100,35 @@ def load_subgroups(ministr, org_id):
 
     groups_no_subcat = re.sub(pattern, "", ministr['Ministry qualifications'])
 
-    for group in groups_no_subcat.split(","):
-        print_pgph("WARNING: adding PeopleId {} organization {}'s subgroup {}".format(ministr['touchpoint_id'], org_id, group))
-        # model.AddSubGroup(ministr['touchpoint_id'], org_id, group)
+    sub_groups_from_file = groups_no_subcat.split(",")
+
+    # ADD
+    for sub_group in sub_groups_from_file:
+        print_pgph("WARNING: adding PeopleId {} organization {}'s subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
+
+        # if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
+        #     continue
+
+        # model.AddSubGroup(ministr['touchpoint_id'], org_id, sub_group)
+
+    # REMOVE old
+    exists_sg_query = '''
+    SELECT
+        mt.Name
+    FROM dbo.OrgMemMemTags ommt
+    LEFT JOIN dbo.MemberTags mt ON mt.Id = ommt.MemberTagId
+    WHERE ommt.PeopleId = {} AND ommt.OrgId = {};
+    '''.format(ministr['touchpoint_id'], org_id)
+
+    existing_tp_sub_groups = [r.Name for r in q.QuerySql(exists_sg_query)]
+
+    remove_sub_groups = list(filter(lambda x: x not in sub_groups_from_file, existing_tp_sub_groups))
+
+    for sub_group in remove_sub_groups:
+        print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
+
+        # if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
+        #     model.RemoveSubGroup(ministr['touchpoint_id'], org_id, sub_group)
 
 
 if model.HttpMethod.lower() == 'get':
