@@ -21,7 +21,7 @@ NUM_LINES_TO_STRIP              = 6
 LOOKBACK_DAYS                   = 365
 MSP_TP_ID_FIELDNAME             = 'TouchPoint ID'
 MSP_ACTIVE_TIMING_FIELDNAME     = 'Last date used in a schedule'
-MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'}
+MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'} # Communion for the Sick & Homebound?
 TP_MSP_INVOLVEMENT_ID           = 1308
 
 
@@ -96,11 +96,7 @@ def check_drop_from_org(people_id, org_id):
 
 def load_subgroups(ministr, org_id):
 
-    pattern = r"\s+\[(.*?)\]"
-
-    groups_no_subcat = re.sub(pattern, "", ministr['Ministry qualifications'])
-
-    sub_groups_from_file = groups_no_subcat.split(",")
+    sub_groups_from_file = get_ministers_subgroups(ministr['Ministry qualifications'])
 
     # ADD
     for sub_group in sub_groups_from_file:
@@ -129,6 +125,23 @@ def load_subgroups(ministr, org_id):
 
         # if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
         #     model.RemoveSubGroup(ministr['touchpoint_id'], org_id, sub_group)
+
+
+def get_ministers_subgroups(ministr_qual):
+    sub_groups  = []
+    pattern     = r"\s+\[(.*?)\]"
+
+    groups_no_subcat = re.sub(pattern, "", ministr_qual)
+
+    sub_groups_raw =  groups_no_subcat.split(',')
+
+    for group in sub_groups_raw:
+        if group in MSP_REPLACEMENT_SUBGROUP_CODES:
+            sub_groups.append(MSP_REPLACEMENT_SUBGROUP_CODES[group])
+        else:
+            sub_groups.append(group)
+
+    return sub_groups
 
 
 if model.HttpMethod.lower() == 'get':
