@@ -17,9 +17,11 @@ __author__ = "Gavin Murphy"
 __email__ = "gmurphy@stannparish.org"
 
 
-NUM_LINES_TO_STRIP  = 6
-MSP_TP_ID_FIELDNAME = 'TouchPoint ID'
-
+NUM_LINES_TO_STRIP          = 6
+LOOKBACK_DAYS               = 365
+MSP_TP_ID_FIELDNAME         = 'TouchPoint ID'
+MSP_ACTIVE_TIMING_FIELDNAME = 'Last date used in a schedule'
+TP_MSP_INVOLVEMENT_ID       = '1308'
 
 # Classes
 
@@ -56,7 +58,7 @@ def process_minister(ministr):
             print_pgph("No touchpoint id defined in file for {}".format(ministr))
             return
 
-        touchpoint_id = int(tp_id_field)
+        ministr['touchpoint_id'] = int(tp_id_field)
 
     except Exception as err:
         print_pgph('ERROR Cannot find the TouchPoint Id field {} in record {}'.format(MSP_TP_ID_FIELDNAME, ministr))
@@ -66,10 +68,16 @@ def process_minister(ministr):
         print_pgph('INFO: NOT_ACTIVE This is not an active minister leaving them alone {}'.format(ministr))
         return
 
+    print_pgph('INFO: the minister is still ministering {}'.format(ministr))
+
 
 def active_minister(ministr):
-    print_pgph("is this person still active?")
+    last_time_used = model.ParseDate(ministr[MSP_ACTIVE_TIMING_FIELDNAME])
+    days_ago = datetime.datetime.now() - datetime.timedelta(days=LOOKBACK_DAYS)
+    # convert for compareto TouchPoint model DateTime
+    days_ago_tpdt = model.ParseDate(days_ago.strftime('%Y-%m-%d'))
 
+    return (last_time_used > days_ago_tpdt)
 
 
 if model.HttpMethod.lower() == 'get':
