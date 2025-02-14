@@ -70,7 +70,7 @@ def process_minister(ministr):
         check_drop_from_org(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
         return
 
-    model.JoinOrg(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
+    model.JoinOrg(TP_MSP_INVOLVEMENT_ID, ministr['touchpoint_id'])
     print_pgph('INFO: added to involvement for person {} to org {}'.format(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID))
 
     load_subgroups(ministr, TP_MSP_INVOLVEMENT_ID)
