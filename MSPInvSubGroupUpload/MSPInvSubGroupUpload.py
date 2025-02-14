@@ -99,11 +99,10 @@ def load_subgroups(ministr, org_id):
 
     # ADD
     for sub_group in sub_groups_from_file:
-        print_pgph("WARNING: adding PeopleId {} organization {}'s subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
-
         if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
             continue
 
+        print_pgph("INFO: adding PeopleId {} organization {}'s subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
         model.AddSubGroup(ministr['touchpoint_id'], org_id, sub_group)
 
     # REMOVE old
@@ -120,10 +119,11 @@ def load_subgroups(ministr, org_id):
     remove_sub_groups = list(filter(lambda x: x not in sub_groups_from_file, existing_tp_sub_groups))
 
     for sub_group in remove_sub_groups:
-        print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
+        if not model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
+            continue
 
-        if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
-            model.RemoveSubGroup(ministr['touchpoint_id'], org_id, sub_group)
+        print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
+        model.RemoveSubGroup(ministr['touchpoint_id'], org_id, sub_group)
 
 
 def get_ministers_subgroups(ministr_qual):
