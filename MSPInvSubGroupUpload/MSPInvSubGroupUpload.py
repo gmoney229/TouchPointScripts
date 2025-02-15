@@ -74,7 +74,7 @@ def process_minister(ministr):
         model.JoinOrg(TP_MSP_INVOLVEMENT_ID, ministr['touchpoint_id'])
         print_pgph('INFO: added to involvement for person {} to org {}'.format(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID))
 
-    load_subgroups(ministr, TP_MSP_INVOLVEMENT_ID)
+    load_min_qual_subgroups(ministr, TP_MSP_INVOLVEMENT_ID)
 
 
 def active_minister(ministr):
@@ -94,8 +94,7 @@ def check_drop_from_org(people_id, org_id):
     model.DropOrgMember(people_id, org_id)
 
 
-def load_subgroups(ministr, org_id):
-
+def load_min_qual_subgroups(ministr, org_id):
     sub_groups_from_file = get_ministers_subgroups(ministr['Ministry qualifications'])
 
     # ADD
@@ -115,9 +114,14 @@ def load_subgroups(ministr, org_id):
     WHERE ommt.PeopleId = {} AND ommt.OrgId = {};
     '''.format(ministr['touchpoint_id'], org_id)
 
-    existing_tp_sub_groups = [r.Name for r in q.QuerySql(exists_sg_query)]
+    existing_tp_sub_groups  = [r.Name for r in q.QuerySql(exists_sg_query)]
+    remove_sub_groups       = []
+    namey                   = "{} {}".format(ministr['First name'], ministr['Last name'])
 
-    remove_sub_groups = list(filter(lambda x: x not in sub_groups_from_file, existing_tp_sub_groups))
+    for existing_sg in existing_tp_sub_groups:
+        if existing_sg not in sub_groups_from_file:
+            print_pgph("DEBUG: Here we go... removing this {} from {}".format(existing_sg, namey))
+            remove_sub_groups.append(existing_sg)
 
     for sub_group in remove_sub_groups:
         if not model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
@@ -136,6 +140,7 @@ def get_ministers_subgroups(ministr_qual):
     sub_groups_raw =  groups_no_subcat.split(',')
 
     for group in sub_groups_raw:
+        group = group.strip()
         if group in MSP_REPLACEMENT_SUBGROUP_CODES:
             sub_groups.append(MSP_REPLACEMENT_SUBGROUP_CODES[group])
         else:
