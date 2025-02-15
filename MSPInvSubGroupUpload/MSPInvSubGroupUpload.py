@@ -48,8 +48,14 @@ def process_post():
 
     reader = csv.DictReader(csv_file)
 
+    ministrs_loaded = []
+
     for row in reader:
-        process_minister(row)
+        ministr_tp_id = process_minister(row)
+        if ministr_tp_id:
+            ministrs_loaded.append(ministr_tp_id)
+
+    unload_ministers_not_in_file(ministrs_loaded)
 
 
 def process_minister(ministr):
@@ -76,6 +82,8 @@ def process_minister(ministr):
 
     load_min_qual_subgroups(ministr, TP_MSP_INVOLVEMENT_ID)
 
+    return ministr['touchpoint_id']
+
 
 def active_minister(ministr):
     last_time_used = model.ParseDate(ministr[MSP_ACTIVE_TIMING_FIELDNAME])
@@ -89,7 +97,10 @@ def active_minister(ministr):
 def check_drop_from_org(people_id, org_id):
     if not model.InOrg(people_id, org_id):
         return
+    drop_member_from_org(people_id, org_id)
 
+
+def drop_member_from_org(people_id, org_id):
     print_pgph('WARNING: removing PeopleId {} from organization {}'.format(people_id, org_id))
     model.DropOrgMember(people_id, org_id)
 
@@ -115,20 +126,11 @@ def load_min_qual_subgroups(ministr, org_id):
     '''.format(ministr['touchpoint_id'], org_id)
 
     existing_tp_sub_groups  = [r.Name for r in q.QuerySql(exists_sg_query)]
-    remove_sub_groups       = []
-    namey                   = "{} {}".format(ministr['First name'], ministr['Last name'])
 
     for existing_sg in existing_tp_sub_groups:
         if existing_sg not in sub_groups_from_file:
-            print_pgph("DEBUG: Here we go... removing this {} from {}".format(existing_sg, namey))
-            remove_sub_groups.append(existing_sg)
-
-    for sub_group in remove_sub_groups:
-        if not model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
-            continue
-
-        print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
-        model.RemoveSubGroup(ministr['touchpoint_id'], org_id, sub_group)
+            print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['touchpoint_id'], org_id, sub_group))
+            model.RemoveSubGroup(ministr['touchpoint_id'], org_id, existing_sg)
 
 
 def get_ministers_subgroups(ministr_qual):
@@ -147,6 +149,22 @@ def get_ministers_subgroups(ministr_qual):
             sub_groups.append(group)
 
     return sub_groups
+
+
+def unload_ministers_not_in_file(ministrs_loaded):
+    org_in_question = TP_MSP_INVOLVEMENT_ID
+    exists_members_query = '''
+    SELECT
+        PeopleId
+    FROM dbo.OrganizationMembers
+    WHERE OrganizationId={};
+    '''.format(org_in_question)
+
+    ids_in_org = [r.PeopleId for r in q.QuerySql(exists_members_query)]
+
+    for people_id in ids_in_org:
+        if people_id not in ministrs_loaded:
+            drop_member_from_org(people_id, org_in_question)
 
 
 if model.HttpMethod.lower() == 'get':
