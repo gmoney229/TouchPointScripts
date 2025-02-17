@@ -21,7 +21,7 @@ NUM_LINES_TO_STRIP              = 6
 LOOKBACK_DAYS                   = 365
 MSP_TP_ID_FIELDNAME             = 'TouchPoint ID'
 MSP_ACTIVE_TIMING_FIELDNAME     = 'Last date used in a schedule'
-MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'} # Communion for the Sick & Homebound?
+MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'} # Communion for the Sick & Homebound? & maybe switch out Sub* with *
 TP_MSP_INVOLVEMENT_ID           = 1308
 
 
@@ -48,12 +48,12 @@ def process_post():
 
     reader = csv.DictReader(csv_file)
 
-    ministrs_loaded = []
+    ministrs_loaded = set()
 
     for row in reader:
         ministr_tp_id = process_minister(row)
         if ministr_tp_id:
-            ministrs_loaded.append(ministr_tp_id)
+            ministrs_loaded.add(ministr_tp_id)
 
     unload_ministers_not_in_file(ministrs_loaded)
 
