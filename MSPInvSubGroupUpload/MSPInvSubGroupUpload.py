@@ -21,7 +21,8 @@ NUM_LINES_TO_STRIP              = 6
 LOOKBACK_DAYS                   = 365
 MSP_TP_ID_FIELDNAME             = 'TouchPoint ID'
 MSP_ACTIVE_TIMING_FIELDNAME     = 'Last date used in a schedule'
-MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'} # Communion for the Sick & Homebound? & maybe switch out Sub* with *
+MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'}
+MSP_IGNORE_SUBGROUP_CODES       = {'Welcome+'}
 TP_MSP_INVOLVEMENT_ID           = 1308
 
 
@@ -40,11 +41,6 @@ def process_get():
 
 def process_post():
     csv_file = io.StringIO(model.Data.file)
-
-    # NOTE would be way better do a find and replace but stripping lines is easier for now.
-    #     thanks Google ?
-    for _ in range(NUM_LINES_TO_STRIP):
-        csv_file.readline()
 
     reader = csv.DictReader(csv_file)
 
@@ -142,13 +138,29 @@ def get_ministers_subgroups(ministr_qual):
     sub_groups_raw =  groups_no_subcat.split(',')
 
     for group in sub_groups_raw:
-        group = group.strip()
-        if group in MSP_REPLACEMENT_SUBGROUP_CODES:
+        group = parse_subgroup(group)
+        if group in MSP_IGNORE_SUBGROUP_CODES:
+            continue
+        elif group in MSP_REPLACEMENT_SUBGROUP_CODES:
             sub_groups.append(MSP_REPLACEMENT_SUBGROUP_CODES[group])
         else:
             sub_groups.append(group)
 
     return sub_groups
+
+
+def parse_subgroup(group):
+    """
+    strip the 'Sub ' part of a sub group  / Ministry Qualification
+
+    ex.
+        Sub Greeter -> Greeter
+        Sub Lector -> Lector
+    """
+    pattern = "[s,S][u,U][b,B]\s+"
+    group = group.strip()
+
+    return re.sub(pattern, "", group)
 
 
 def unload_ministers_not_in_file(ministrs_loaded):
