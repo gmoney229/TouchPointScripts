@@ -68,7 +68,7 @@ def process_minister(ministr):
         raise err
 
     if not active_minister(ministr):
-        print_pgph('INFO: NOT_ACTIVE This is not an active minister {} {}'.format(ministr['name_2'] ))
+        print_pgph('INFO: NOT_ACTIVE This is not an active minister {}'.format(ministr['name_2'] ))
         check_drop_from_org(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
         return
 
