@@ -17,7 +17,6 @@ __author__ = "Gavin Murphy"
 __email__ = "gmurphy@stannparish.org"
 
 
-NUM_LINES_TO_STRIP              = 6
 LOOKBACK_DAYS                   = 365
 MSP_TP_ID_FIELDNAME             = 'TouchPoint ID'
 MSP_ACTIVE_TIMING_FIELDNAME     = 'Last date used in a schedule'
@@ -139,7 +138,7 @@ def get_ministers_subgroups(ministr_qual):
     sub_groups_raw =  groups_no_subcat.split(',')
 
     for group in sub_groups_raw:
-        group = parse_subgroup(group)
+        group = group.strip()
         if group in MSP_IGNORE_SUBGROUP_CODES:
             continue
         elif group in MSP_REPLACEMENT_SUBGROUP_CODES:
@@ -148,20 +147,6 @@ def get_ministers_subgroups(ministr_qual):
             sub_groups.append(group)
 
     return sub_groups
-
-
-def parse_subgroup(group):
-    """
-    strip the 'Sub ' part of a sub group  / Ministry Qualification
-
-    ex.
-        Sub Greeter -> Greeter
-        Sub Lector -> Lector
-    """
-    pattern = "[s,S][u,U][b,B]\s+"
-    group = group.strip()
-
-    return re.sub(pattern, "", group)
 
 
 def unload_ministers_not_in_file(ministrs_loaded):
