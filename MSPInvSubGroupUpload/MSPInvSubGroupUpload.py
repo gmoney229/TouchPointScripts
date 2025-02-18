@@ -68,6 +68,7 @@ def process_minister(ministr):
         raise err
 
     if not active_minister(ministr):
+        # TODO put in an archive involvement
         print_pgph('INFO: NOT_ACTIVE This is not an active minister {}'.format(ministr['name_2'] ))
         check_drop_from_org(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
         return
@@ -125,7 +126,7 @@ def load_min_qual_subgroups(ministr, org_id):
 
     for existing_sg in existing_tp_sub_groups:
         if existing_sg not in sub_groups_from_file:
-            print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['name_2'] , org_id, sub_group))
+            print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['name_2'] , org_id, existing_sg))
             model.RemoveSubGroup(ministr['touchpoint_id'], org_id, existing_sg)
 
 
