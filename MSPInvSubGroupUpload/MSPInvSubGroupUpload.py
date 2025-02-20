@@ -20,7 +20,11 @@ __email__ = "gmurphy@stannparish.org"
 LOOKBACK_DAYS                   = 365
 MSP_TP_ID_FIELDNAME             = 'TouchPoint ID'
 MSP_ACTIVE_TIMING_FIELDNAME     = 'Last date used in a schedule'
-MSP_REPLACEMENT_SUBGROUP_CODES  = {'CSH': 'Communion Sick and Homebound'}
+MSP_REPLACEMENT_SUBGROUP_CODES  = {
+                                      'CSH': 'Communion Sick and Homebound',
+                                      'Arcangel': 'Arcángel',
+                                      'Anfitrion': 'Anfitrión'
+                                  }
 MSP_IGNORE_SUBGROUP_CODES       = {'Welcome+'}
 TP_MSP_INVOLVEMENT_ID           = 1308
 
@@ -65,7 +69,7 @@ def process_minister(ministr):
 
     except Exception as err:
         print_pgph('ERROR Cannot find the TouchPoint Id field {} in record {}'.format(MSP_TP_ID_FIELDNAME, ministr))
-        raise err
+        return
 
     if not active_minister(ministr):
         # TODO put in an archive involvement
@@ -73,9 +77,14 @@ def process_minister(ministr):
         check_drop_from_org(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID)
         return
 
+    p = model.GetPerson(ministr['touchpoint_id'])
+    if p is None:
+        print_pgph('WARNING: cannot find Person {} in TouchPoint'.format(ministr['name_2']))
+        return
+
     if not model.InOrg(ministr['touchpoint_id'], TP_MSP_INVOLVEMENT_ID):
         model.JoinOrg(TP_MSP_INVOLVEMENT_ID, ministr['touchpoint_id'])
-        print_pgph('INFO: added to involvement for person {} to org {}'.format(ministr['name_2'] , TP_MSP_INVOLVEMENT_ID))
+        print_pgph('INFO: added to involvement for person {} to org {}'.format(ministr['name_2'], TP_MSP_INVOLVEMENT_ID))
 
     load_min_qual_subgroups(ministr, TP_MSP_INVOLVEMENT_ID)
 
@@ -110,7 +119,7 @@ def load_min_qual_subgroups(ministr, org_id):
         if model.InSubGroup(ministr['touchpoint_id'], org_id, sub_group):
             continue
 
-        print_pgph("INFO: adding PeopleId {} organization {}'s subgroup {}".format(ministr['name_2'] , org_id, sub_group))
+        print_pgph("INFO: adding PeopleId {} organization {}'s subgroup {}".format(ministr['name_2'], org_id, sub_group))
         model.AddSubGroup(ministr['touchpoint_id'], org_id, sub_group)
 
     # REMOVE old
@@ -126,7 +135,7 @@ def load_min_qual_subgroups(ministr, org_id):
 
     for existing_sg in existing_tp_sub_groups:
         if existing_sg not in sub_groups_from_file:
-            print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['name_2'] , org_id, existing_sg))
+            print_pgph("WARNING: removing PeopleId {} organization {} from subgroup {}".format(ministr['name_2'], org_id, existing_sg))
             model.RemoveSubGroup(ministr['touchpoint_id'], org_id, existing_sg)
 
 
